@@ -12,6 +12,7 @@ import urllib
 import hashlib
 import logging
 import tempfile
+import mimetypes
 
 import simplejson as json
 import web
@@ -24,22 +25,49 @@ import visualizer_exceptions
 web.config.update({
         'debug':True,
         'server.environment': 'production',
-        'staticFilter.on': True,
-        'staticFilter.dir': 'static',
 })
 
-visualizer_settings = settings.get_settings() 
 logger = logging.getLogger(__name__)
-config.ECHO_NEST_API_KEY = visualizer_settings['echo_nest_api_key']
-FILE_DIR = visualizer_settings['upload_dir']
-ANALYSIS_DIR = visualizer_settings['analysis_dir']
+config.ECHO_NEST_API_KEY = None
+FILE_DIR = None
+ANALYSIS_DIR = None
+STATIC_DIRS = ('css', 'js', 'images', 'html') 
 
 urls = (
         '/upload',              'UploadFileHandler',
         '/analyze',             'AnalyzeHandler',
         '/files/(.*)',          'ChunkedFileDownloadHandler',
+        '/',                    'IndexHandler',
+        '/(' + '|'.join(STATIC_DIRS) + ')/.*', 'StaticHandler' 
         )
 
+def reload_settings(config_path=None):
+    global config, FILE_DIR, ANALYSIS_DIR
+    visualizer_settings = settings.get_settings(config_path)
+    config.ECHO_NEST_API_KEY = visualizer_settings['echo_nest_api_key']
+    FILE_DIR = visualizer_settings['upload_dir']
+    ANALYSIS_DIR = visualizer_settings['analysis_dir']
+    check_dir(FILE_DIR, writable=True)
+    check_dir(ANALYSIS_DIR, writable=True)
+
+class IndexHandler:
+    def GET(self):
+        raise web.seeother("/static/index.html")
+
+def mime_type(filename): 
+    return mimetypes.guess_type(filename)[0] or 'application/octet-stream' 
+
+class StaticHandler: 
+    def GET(self, static_dir): 
+        print static_dir
+        try: 
+            static_file_name = web.context.path.split('/')[-1] 
+            web.header('Content-type', mime_type(static_file_name)) 
+            static_file = open('.' + web.context.path, 'rb') 
+            web.ctx.output = static_file 
+        except IOError: 
+            web.notfound()
+                            
 class ChunkedFileDownloadHandler:
     """
         (i can't believe i had to write this web.py...)
@@ -102,7 +130,7 @@ class AnalyzeHandler:
 
         with open(analysis_file_path) as analysis_file:
             analysis_dict = json.load(analysis_file)
-        
+
         ca = clean_analysis(analysis_dict)
         return json.dumps({'analysis':ca})
 
@@ -118,7 +146,7 @@ class UploadFileHandler:
     """
     def POST(self, *args):
         input_params = web.input()
-        filetype = input_params['filetype']
+        # filetype = input_params['filetype']
         # filename = input['filename']
         filedata = input_params['file']
 
@@ -172,30 +200,18 @@ class ExceptionPassingApplication(web.application):
         except (web.HTTPError, KeyboardInterrupt, SystemExit):
             raise
         except visualizer_exceptions.BaseVisualizerException, ve:
-            return json.dumps({"error":ve.format_message()})            
+            return json.dumps({"error":ve.format_message()})
         except Exception:
             web_input = web.input()
             fn, args = self._match(self.mapping, web.ctx.path)
             logger.exception("input = \n%s", pprint.pformat(dict(web_input)))
             new_e = visualizer_exceptions.BaseVisualizerException()
-            return json.dumps({"error":new_e.format_message()}) 
+            return json.dumps({"error":new_e.format_message()})
 
-
-def main():
-    check_dir(FILE_DIR, writable=True)
-    check_dir(ANALYSIS_DIR, writable=True)
-    logging.basicConfig(level=logging.DEBUG, format="%(asctime)s %(message)s")
-    
+def start_app(settings_path):
+    reload_settings(settings_path)
     app = ExceptionPassingApplication(urls, globals(), autoreload=True)
     app.add_processor(handler_timer)
+    pprint.pprint(dict(web.config))
     app.run()
-
-if __name__ == "__main__":
-    try:
-        raise visualizer_exceptions.FileNotFoundVE("shitshitshit")
-    except visualizer_exceptions.BaseVisualizerException, e:
-        print "BVE:",e
-    except Exception, e2:
-        print "E",e2
-    main()
 

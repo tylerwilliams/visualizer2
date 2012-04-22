@@ -2,13 +2,10 @@ import os
 import logging
 import ConfigParser
 
-LOCAL_CONFIG_FILE_PATH = "visualizer.conf"
-CONFIG_FILE_PATH = "/etc/visualizer.conf"
+DEFAULT_CONFIG_FILE_PATH = "/etc/visualizer.conf"
 CONFIG_FILE_SECTION_NAME = "visualizer"
 
 logger = logging.getLogger("visualizer")
-_settings = {
-}
 
 """
 These settings can be overridden with a config file at
@@ -26,14 +23,11 @@ def load_config(config_path):
     logger.info("using config from %s", config_path)
     config = ConfigParser.SafeConfigParser()
     config.read(config_path)
-    _settings.update(dict(config.items(CONFIG_FILE_SECTION_NAME)))
+    return dict(config.items(CONFIG_FILE_SECTION_NAME))
 
-if os.path.exists(LOCAL_CONFIG_FILE_PATH):
-    load_config(LOCAL_CONFIG_FILE_PATH)
-elif os.path.exists(CONFIG_FILE_PATH):
-    load_config(CONFIG_FILE_PATH)
-else:
-    logger.warning("no settings files found!")
-
-def get_settings():
-    return _settings
+def get_settings(config_path):
+    if not config_path:
+        config_path = DEFAULT_CONFIG_FILE_PATH
+    if not os.path.exists(config_path):
+        raise Exception("no settings files found!")
+    return load_config(config_path)
