@@ -1,33 +1,46 @@
-// AUTHOR: williams.tyler@gmail.com
+var segment = null;
+var curr_height;
+var curr_width;
 
-/*BEGIN_DOCSTRING 
+interface JavaScript {
+	boolean registerSegmentCallback(Object o);
+	boolean deregisterSegmentCallback(Object o);
+	boolean registerTatumCallback(Object o);
+	boolean deregisterTatumCallback(Object o);
+	boolean registerBeatCallback(Object o);
+	boolean deregisterBeatCallback(Object o);
+	boolean registerBarCallback(Object o);
+	boolean deregisterBarCallback(Object o);
+	boolean registerSectionCallback(Object o);
+	boolean deregisterSectionCallback(Object o);
+	boolean registerFullAnalysisCallback(Object o);
+	boolean deregisterFullAnalysisCallback(Object o);
+	boolean registerTimestampCallback(Object o);
+	boolean deregisterTimestampCallback(Object o);
+	boolean registerViewportSizeChangeCallback(Object o);
+	boolean deregisterViewportSizeChangeCallback(Object o);	
+}
 
-<p>
-[Based on Mouse-Motion to Frequency - By F1LT3R 
-<br>
-http://groups.google.com/group/processingjs
-<br>
-Respect.]
-</p>
-<br>
-<p>
-A poor example of an equalizer, <b>Equaline</b> looks at the pitches of each segment.
-</p>
-END_DOCSTRING*/
+JavaScript javascript = null;
+boolean didRegister = false;
+
+void setJavaScript(JavaScript js) { 
+	javascript = js; 
+}
 
 void setup(){
-	size(get_max_canvas_width(), get_max_canvas_height());
+    size(640, 480);
 	strokeWeight(1);
 	stroke(255);
 	noFill();
-	enable_segments();
+	frameRate(30);
 }
 
 // Generic Looping Variables
 int n, i;
 
 // Controls the morph speed of the curve
-int rate=50;
+int rate=20;
 
 // Set Last Mouse X & Y for dist check
 int lastMouseX, lastMouseY;
@@ -46,17 +59,35 @@ for (i=0; i < sampleRate; i++) {
   distXY[i] = height/2;
 } 
 
-void draw(){
-    resize(this, get_max_canvas_width(), get_max_canvas_height(), 0);
+void handleResize(int new_width, int new_height) {
+    size(new_width, new_height);
+    curr_width = new_width;
+    curr_height = new_height;
+}
 
+void handleSegment(Object new_segment) {
+    if (segment != new_segment) {
+        segment = new_segment;        
+    }
+}
+
+
+void draw(){
+    if (javascript != null) {
+		if (!didRegister) {
+		  javascript.registerSegmentCallback(handleSegment);
+		  javascript.registerViewportSizeChangeCallback(handleResize);
+          didRegister = true;
+		}
+	}
 	// Set background color to to amplitude of sampleLoc     
 	//background(255,255,255, 100);
 	background(0, 0, 0, 255);
 	
 	// Loop through samples
 	for (i=0; i < sampleRate; i++){      
-	  if (window.segment) {
-		nextDistXY[i] = window.segment.pitches[i]*height;
+	  if (segment) {
+		nextDistXY[i] = segment.pitches[i]*height;
 	  } else {
 		nextDistXY[i] = 0;
 	  }
