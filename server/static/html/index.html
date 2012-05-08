@@ -7,10 +7,8 @@
     <link href="/static/css/bootstrap.min.css" rel="stylesheet">
     <link href="/static/css/bootstrap-responsive.min.css" rel="stylesheet">
     <link href="/static/css/jquery.fileupload-ui.css" rel="stylesheet">
-    <link href="/static/css/jquery.slidingdrawer.css" rel="stylesheet">
     <link href="/static/css/visualizer.css" rel="stylesheet">
     <link rel="shortcut icon" href="/init/static/index_files/favicon.ico">
-    <link href="/static/css/IDE.css" rel="stylesheet">
 
   </head>
   <body data-rendering="true">
@@ -123,8 +121,6 @@
     <script charset="utf-8" type="text/javascript" src="/static/js/dynamicalert.js"></script>
     <!-- processing.js (canvas fun) -->
     <script charset="utf-8" type="text/javascript" src="/static/js/processing-1.3.6.js"></script>
-    <!-- jplayer (mp3 playback) -->
-    <script charset="utf-8" type="text/javascript" src="/static/js/jquery.jplayer.min.js"></script>
     <!-- soundmanager (mp3 playback) -->
     <script charset="utf-8" type="text/javascript" src="/static/js/soundmanager2-nodebug-jsmin.js"></script>
     <!-- viz stuff -->
@@ -139,6 +135,8 @@
           var fragParams = parseFragID(window.location.hash);
           if (fragParams.demo != null) {
             loadDefaultSketch(fragParams.demo);
+          } else {
+            loadDefaultSketch("world.pde");
           }
           // hook any "sketch" class links so they 
           // actually load the specified sketch
