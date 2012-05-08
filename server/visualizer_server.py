@@ -216,9 +216,10 @@ class ExceptionPassingApplication(web.application):
             logger.exception("something went wrong")
             return r
 
-def start_app(settings_path):
+def start_app(settings_path, port=8080):
     reload_settings(settings_path)
     app = ExceptionPassingApplication(urls, globals(), autoreload=True)
     # app.add_processor(handler_timer)
-    app.run()
+    # app.run()
+    web.httpserver.runsimple(app.wsgifunc(), ("0.0.0.0", port))
 
