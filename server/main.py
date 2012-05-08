@@ -12,6 +12,7 @@ def main():
     
     (options, args) = parser.parse_args()
     sys.argv[1:] = [] # force web.py to ignore options
+    visualizer_server.config.TRACE_API_CALLS=True
     visualizer_server.start_app(options.config)
 
 if __name__ == "__main__":

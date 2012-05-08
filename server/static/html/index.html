@@ -1,0 +1,172 @@
+<!DOCTYPE HTML>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <title>visualizer.fm</title>
+    <link href="/static/css/reset.css" rel="stylesheet">
+    <link href="/static/css/bootstrap.min.css" rel="stylesheet">
+    <link href="/static/css/bootstrap-responsive.min.css" rel="stylesheet">
+    <link href="/static/css/jquery.fileupload-ui.css" rel="stylesheet">
+    <link href="/static/css/jquery.slidingdrawer.css" rel="stylesheet">
+    <link href="/static/css/visualizer.css" rel="stylesheet">
+    <link rel="shortcut icon" href="/init/static/index_files/favicon.ico">
+    <link href="/static/css/IDE.css" rel="stylesheet">
+
+  </head>
+  <body data-rendering="true">
+    <!-- /* NAVIGATION BAR  */ -->
+    <div class="navbar navbar-fixed" >
+      <div class="navbar-inner">
+        <div class="container">
+          <a class="brand" href="http://visualizer.fm">visualizer.fm</a>
+          <ul class="nav">
+            <li><a data-toggle="modal" href="#aboutModal">About</a></li>
+            <li><a href="http://github.com/tylerwilliams/visualizer2" target="_blank">Watch on Github</a></li>
+            <!-- <li><a data-toggle="modal" href="#editModal">Edit...</a></li> -->
+              <li class="dropdown">
+                <a href="#" class="dropdown-toggle" data-toggle="dropdown">Try a Demo <b class="caret"></b></a>
+                <ul class="dropdown-menu">
+                  <li><a rel="sketch" href="#demo=lines.pde">Linear</a></li>
+                  <li><a rel="sketch" href="#demo=world.pde">Worlds</a></li>
+                  <li><a rel="sketch" href="#demo=droplets.pde">Rainy Day</a></li>
+                  <li><a rel="sketch" href="#demo=diagnostic.pde">Diagnostica</a></li>
+                </ul>
+              </li>
+          </ul>
+
+          <ul class="nav pull-right">
+            <li>
+              <div class="progbar-container progress progress-striped active" >
+                  <div id="upload-progress-bar" class="bar mini-bar" style="width: 0%;"></div>
+              </div>
+<!-- 			progress-striped
+			     active -->
+              <div class="progbar-container progress progress-striped active progress-success" >
+                   <div id="analyze-progress-bar" class="bar mini-bar" style="width: 0%;"></div>
+               </div>
+            </li>
+            <li>
+              <span class="btn btn-primary start fileinput-button" id="upload_button">
+                <i class="icon-plus icon-white"></i>
+                <span>Upload mp3...</span>
+                <input type="file" name="file_data" id="fileupload" data-url="/upload">
+              </span>
+            </li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
+    <!-- /* ABOUT MODAL */ -->
+    <div id="aboutModal" class="modal hide fade in" style="display: none; ">
+      <div class="modal-header">
+        <!-- <a class="close" data-dismiss="modal" >&times;</a> -->
+        <h3>Visualizer.fm</h3>
+      </div>
+      <div class="modal-body">
+        <h4>About</h4>
+        <p>Visualizer.fm is a playground for creating and sharing your own audio visualizations.</p>
+
+        <h4>How does it work?</h4>
+        <p>Visualizer.fm synchronizes <strong><a href="http://processingjs.org/">Processing.js</a></strong> visualizations with audio features extracted from uploaded audio using <strong><a href="http://developer.echonest.com/docs/v4/track.html#analyze">The Echo Nest's analyze API.</a></strong></p>
+
+        <h4>Authors</h4>
+        <p>Tyler Williams (@tylerbw) and Jason Sundram (@jsundram)</p>
+
+        <h4>Powered By:</h4>
+        <center><img src="/static/img/250x80_dk.gif" alt="ENLOGO"/></center>
+
+      </div>
+
+      <div class="modal-footer">
+        <a href="#" class="btn" data-dismiss="modal" >Close</a>
+      </div>
+
+    </div>
+
+    <!-- /* BODY */ -->
+    <div class="container">
+      <div id="notification-area"></div>
+
+	<!-- dear bootstrap, you don't help much with this. -->
+      <div id="editor" style="display:none"></div>
+
+      <div class="span" style="width:100%; height:100%">
+        <div id="vcanvas" class="well">
+          <canvas id="processing-canvas"></canvas>
+        </div>
+      </div>
+
+    </div>
+
+      <footer class="footer">
+        <div id="navbar-example" class="navbar navbar-static">
+          <div class="navbar-inner">
+            <div class="container" style="width: auto;">
+              <ul class="nav">
+                <li><a href="#" id="back">back</a></li>
+                <li><a href="#" id="toggle">play/pause</a></li>
+                <li><a href="#" id="fwd">fwd</a></li>
+              </ul>
+            </div>
+          </div>
+        </div>
+      </footer>
+    
+    <!-- jq-f-u (file upload) -->
+    <script charset="utf-8" type="text/javascript" src="http://ajax.googleapis.com/ajax/libs/jquery/1.7.2/jquery.min.js"></script>
+    <script charset="utf-8" type="text/javascript" src="/static/js/jquery.ui.widget.js"></script>
+    <script charset="utf-8" type="text/javascript" src="/static/js/jquery.iframe-transport.js"></script>
+    <script charset="utf-8" type="text/javascript" src="/static/js/jquery.fileupload.js"></script>
+    <!-- bootstrap (pretify) -->
+    <script charset="utf-8" type="text/javascript" src="/static/js/bootstrap.js"></script>
+    <script charset="utf-8" type="text/javascript" src="/static/js/dynamicalert.js"></script>
+    <!-- processing.js (canvas fun) -->
+    <script charset="utf-8" type="text/javascript" src="/static/js/processing-1.3.6.js"></script>
+    <!-- jplayer (mp3 playback) -->
+    <script charset="utf-8" type="text/javascript" src="/static/js/jquery.jplayer.min.js"></script>
+    <!-- soundmanager (mp3 playback) -->
+    <script charset="utf-8" type="text/javascript" src="/static/js/soundmanager2-nodebug-jsmin.js"></script>
+    <!-- viz stuff -->
+    <script charset="utf-8" type="text/javascript" src="/static/js/visualizer.js"></script>
+    <script charset="utf-8" type="text/javascript" src="/static/js/vupload.js"></script>
+    <script charset="utf-8" type="text/javascript" src="/static/js/veditor.js"></script>
+    <script charset="utf-8" type="text/javascript" src="/static/js/vaudio.js"></script>
+
+    <script type="text/javascript">
+      $(document).ready(function()  {
+          // load any sketches specified in the fragment identifier
+          var fragParams = parseFragID(window.location.hash);
+          if (fragParams.demo != null) {
+            loadDefaultSketch(fragParams.demo);
+          }
+          // hook any "sketch" class links so they 
+          // actually load the specified sketch
+          $('a[rel*="sketch"]').click(function() {
+              var fragParams = parseFragID(this.href.split("#")[1]);
+              if (fragParams.demo != null) {
+                loadDefaultSketch(fragParams.demo);
+              }
+              return true;
+          });          
+          // hook play/pause skip prev buttons
+          $('#toggle').click(function(e) {
+            togglePlaying();
+            e.stopPropagation();
+            return false;
+          });
+          $('#back').click(function(e) {
+            skipNext();
+            e.stopPropagation();
+            return false;
+          });
+          $('#fwd').click(function(e) {
+            skipPrevious();
+            e.stopPropagation();
+            return false;
+          });
+      });
+    </script>
+    
+  </body>
+</html>

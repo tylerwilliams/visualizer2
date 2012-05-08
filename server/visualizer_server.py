@@ -5,18 +5,16 @@ sys.setdefaultencoding('utf-8')
 sys.path.append( os.path.dirname(os.path.abspath( __file__ )) )
 os.environ['PYTHON_EGG_CACHE'] = '/tmp'
 
-import re
 import time
+import copy
 import pprint
-import urllib
 import hashlib
 import logging
 import tempfile
-import mimetypes
 
 import simplejson as json
 import web
-from pyechonest import config, song, track, util
+from pyechonest import config, track
 
 import settings
 import cache
@@ -29,54 +27,49 @@ web.config.update({
 
 logger = logging.getLogger(__name__)
 config.ECHO_NEST_API_KEY = None
-FILE_DIR = None
+AUDIO_DIR = None
 ANALYSIS_DIR = None
-STATIC_DIRS = ('css', 'js', 'images', 'html') 
 
 urls = (
         '/upload',              'UploadFileHandler',
         '/analyze',             'AnalyzeHandler',
-        '/files/(.*)',          'ChunkedFileDownloadHandler',
+        '/download',            'FileDownloadHandler',
         '/',                    'IndexHandler',
-        '/(' + '|'.join(STATIC_DIRS) + ')/.*', 'StaticHandler' 
         )
 
 def reload_settings(config_path=None):
-    global config, FILE_DIR, ANALYSIS_DIR
+    global config, AUDIO_DIR, ANALYSIS_DIR
     visualizer_settings = settings.get_settings(config_path)
     config.ECHO_NEST_API_KEY = visualizer_settings['echo_nest_api_key']
-    FILE_DIR = visualizer_settings['upload_dir']
+    AUDIO_DIR = visualizer_settings['upload_dir']
     ANALYSIS_DIR = visualizer_settings['analysis_dir']
-    check_dir(FILE_DIR, writable=True)
+    check_dir(AUDIO_DIR, writable=True)
     check_dir(ANALYSIS_DIR, writable=True)
 
-class IndexHandler:
+def clean_track(track_obj):
+    cleaned_track_obj = copy.copy(track_obj)
+    strip_keys = ['analysis_url', 'code_version', 'cache', 'audio_md5', 
+                  'analyzer_version', 'codestring', 'echoprintstring', 
+                  'id', 'md5', 'sample_md5', 'synchstring', 'decoder',
+                  'status']
+    for strip_key in strip_keys:
+        if strip_key in cleaned_track_obj:
+            cleaned_track_obj.pop(strip_key)
+    return cleaned_track_obj
+
+class IndexHandler(object):
     def GET(self):
-        raise web.seeother("/static/index.html")
+        raise web.seeother("/static/html/index.html")
 
-def mime_type(filename): 
-    return mimetypes.guess_type(filename)[0] or 'application/octet-stream' 
-
-class StaticHandler: 
-    def GET(self, static_dir): 
-        print static_dir
-        try: 
-            static_file_name = web.context.path.split('/')[-1] 
-            web.header('Content-type', mime_type(static_file_name)) 
-            static_file = open('.' + web.context.path, 'rb') 
-            web.ctx.output = static_file 
-        except IOError: 
-            web.notfound()
-                            
-class ChunkedFileDownloadHandler:
+class ChunkedFileDownloadHandler(object):
     """
         (i can't believe i had to write this web.py...)
         This is a file download handler that allows streaming files
     """
-    def GET(self, name):
-        if not os.path.exists(os.path.join(FILE_DIR, name)):
+    def GET(self, fpath):
+        if not os.path.exists(fpath):
             raise web.notfound()
-        fpath = os.path.join(FILE_DIR,name)
+
         total = os.stat(fpath).st_size
         f = open(fpath, 'rb')
 
@@ -103,7 +96,15 @@ class ChunkedFileDownloadHandler:
         f.seek(start)
         return f.read((end-start)+1)
 
-class AnalyzeHandler:
+class FileDownloadHandler(ChunkedFileDownloadHandler):
+    def GET(self, *args):
+        input_params = web.input()
+        file_id = input_params.get('file_id')
+        file_path = get_audio_file_path_for_md5(file_id)
+        web.header('Content-Type', 'audio/mpeg')
+        return super(FileDownloadHandler, self).GET(file_path)
+    
+class AnalyzeHandler(object):
     """
         Analyze handler
 
@@ -125,8 +126,9 @@ class AnalyzeHandler:
         analysis_file_path = get_analysis_file_path_for_md5(file_id)
         if not os.path.exists(analysis_file_path):
             track_obj = track.track_from_filename(file_path)
+            track_obj = clean_track(track_obj.__dict__)
             with open(analysis_file_path, 'w') as new_analysis_file:
-                json.dump(track_obj.__dict__, new_analysis_file)
+                json.dump(track_obj, new_analysis_file)
 
         with open(analysis_file_path) as analysis_file:
             analysis_dict = json.load(analysis_file)
@@ -134,7 +136,7 @@ class AnalyzeHandler:
         ca = clean_analysis(analysis_dict)
         return json.dumps({'analysis':ca})
 
-class UploadFileHandler:
+class UploadFileHandler(object):
     """
         Upload file handler
 
@@ -146,16 +148,14 @@ class UploadFileHandler:
     """
     def POST(self, *args):
         input_params = web.input()
-        # filetype = input_params['filetype']
-        # filename = input['filename']
-        filedata = input_params['file']
+        filedata = input_params['file_data']
 
-        temp_upload = tempfile.SpooledTemporaryFile(dir=FILE_DIR, max_size=1024*1024*10)
+        temp_upload = tempfile.SpooledTemporaryFile(dir=AUDIO_DIR, max_size=1024*1024*10)
         upload_hash = hashlib.md5()
         temp_upload.write(filedata)
         upload_hash.update(filedata)
         upload_md5 = upload_hash.hexdigest()
-
+        print "upload_md5:",upload_md5
         file_path = get_audio_file_path_for_md5(upload_md5)
 
         if not os.path.exists(file_path):
@@ -177,11 +177,11 @@ def check_dir(dirpath, exists=True, writable=False):
             raise Exception("Unable to write to %s." % dirpath)
 
 def get_audio_file_path_for_md5(md5hash):
-    filename = "audio-%s" % md5hash
-    return os.path.join(FILE_DIR, filename)
+    filename = "audio-%s.mp3" % md5hash
+    return os.path.join(AUDIO_DIR, filename)
 
 def get_analysis_file_path_for_md5(md5hash):
-    filename = "analysis-%s" % md5hash
+    filename = "analysis-%s.json" % md5hash
     return os.path.join(ANALYSIS_DIR, filename)
 
 def clean_analysis(analysis_dict):
@@ -193,25 +193,32 @@ def handler_timer(handle):
     logger.info("%s took %2.2fs", web.ctx.path+web.ctx.query, (time.time()-tic))
     return handled
 
+def safe_pformat(input_d):
+    str_repr = pprint.pformat(dict(input_d))
+    return str_repr[:1000]
+
 class ExceptionPassingApplication(web.application):
     def handle(self):
         try:
             return web.application.handle(self)
         except (web.HTTPError, KeyboardInterrupt, SystemExit):
             raise
-        except visualizer_exceptions.BaseVisualizerException, ve:
-            return json.dumps({"error":ve.format_message()})
-        except Exception:
+        except Exception, e:
             web_input = web.input()
             fn, args = self._match(self.mapping, web.ctx.path)
-            logger.exception("input = \n%s", pprint.pformat(dict(web_input)))
-            new_e = visualizer_exceptions.BaseVisualizerException()
-            return json.dumps({"error":new_e.format_message()})
+            web.ctx.status = "400 Bad Request"
+            if isinstance(e, visualizer_exceptions.BaseVisualizerException):
+                r = json.dumps({"error":e.format_message()})
+            else:
+                logger.exception("input = \n%s",safe_pformat(web_input))
+                new_e = visualizer_exceptions.BaseVisualizerException()
+                r = json.dumps({"error":new_e.format_message()})
+            logger.exception("something went wrong")
+            return r
 
 def start_app(settings_path):
     reload_settings(settings_path)
     app = ExceptionPassingApplication(urls, globals(), autoreload=True)
-    app.add_processor(handler_timer)
-    pprint.pprint(dict(web.config))
+    # app.add_processor(handler_timer)
     app.run()
 
