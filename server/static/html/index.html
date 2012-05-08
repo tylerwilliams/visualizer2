@@ -13,7 +13,7 @@
   </head>
   <body data-rendering="true">
     <!-- /* NAVIGATION BAR  */ -->
-    <div class="navbar navbar-fixed" >
+    <div class="navbar navbar-fixed-top" >
       <div class="navbar-inner">
         <div class="container">
           <a class="brand" href="http://visualizer.fm">visualizer.fm</a>
@@ -90,15 +90,17 @@
       <div id="editor" style="display:none"></div>
 
       <div class="span" style="width:100%; height:100%">
-        <div id="vcanvas" class="well">
-          <canvas id="processing-canvas"></canvas>
+        <div class="row">
+          <div id="vcanvas" class="well">
+            <canvas id="processing-canvas"></canvas>
+          </div>
         </div>
       </div>
 
     </div>
 
       <footer class="footer">
-        <div id="navbar-example" class="navbar navbar-static">
+        <div id="navbar-footer" class="navbar navbar-static navbar-fixed-bottom">
           <div class="navbar-inner">
             <div class="container" style="width: auto;">
               <ul class="nav">
